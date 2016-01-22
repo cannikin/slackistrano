@@ -48,18 +48,18 @@ module Slackistrano
       end
 
       payload = {
-        username: fetch(:slack_username),
-        icon_url: fetch(:slack_icon_url),
-        icon_emoji: fetch(:slack_icon_emoji),
+        :username => fetch(:slack_username),
+        :icon_url => fetch(:slack_icon_url),
+        :icon_emoji => fetch(:slack_icon_emoji)
       }
 
       payload[:attachments] = case action
                               when :updated
-                                make_attachments(action, color: 'good')
+                                make_attachments(action, :color => 'good')
                               when :reverted
-                                make_attachments(action, color: '#4CBDEC')
+                                make_attachments(action, :color => '#4CBDEC')
                               when :failed
-                                make_attachments(action, color: 'danger')
+                                make_attachments(action, :color => 'danger')
                               else
                                 make_attachments(action)
                               end
@@ -81,11 +81,11 @@ module Slackistrano
         else
 
           begin
-            response = post_to_slack(team: team,
-                                     token: token,
-                                     webhook: webhook,
-                                     via_slackbot: via_slackbot,
-                                     payload: payload)
+            response = post_to_slack(:team => team,
+                                     :token => token,
+                                     :webhook => webhook,
+                                     :via_slackbot => via_slackbot,
+                                     :payload => payload)
 
           rescue => e
             backend.warn("[slackistrano] Error notifying Slack!")
@@ -109,12 +109,12 @@ module Slackistrano
     #
     def make_attachments(action, options={})
       attachments = options.merge({
-        title:      fetch(:"slack_title_#{action}"),
-        pretext:    fetch(:"slack_pretext_#{action}"),
-        text:       fetch(:"slack_msg_#{action}"),
-        fields:     fetch(:"slack_fields_#{action}"),
-        fallback:   fetch(:"slack_fallback_#{action}"),
-        mrkdwn_in:  [:text, :pretext]
+        :title =>      fetch(:"slack_title_#{action}"),
+        :pretext =>    fetch(:"slack_pretext_#{action}"),
+        :text =>       fetch(:"slack_msg_#{action}"),
+        :fields =>     fetch(:"slack_fields_#{action}"),
+        :fallback =>   fetch(:"slack_fallback_#{action}"),
+        :mrkdwn_in =>  [:text, :pretext]
       }).reject{|k, v| v.nil? }
       [attachments]
     end
@@ -123,11 +123,13 @@ module Slackistrano
     #
     #
     #
-    def post_to_slack(via_slackbot: nil, team: nil, token: nil, webhook: nil, payload: {})
-      if via_slackbot
-        post_as_slackbot(team: team, token: token, webhook: webhook, payload: payload)
+    def post_to_slack(options)
+      default_options = { :via_slackbot => nil, :team => nil, :token => nil, :webhook => nil, :payload => {} }
+      options = default_options.merge(options)
+      if options[:via_slackbot]
+        post_as_slackbot(:team => options[:team], :token => options[:token], :webhook => options[:webhook], :payload => options[:payload])
       else
-        post_as_webhook(team: team, token: token, webhook: webhook, payload: payload)
+        post_as_webhook(:team => options[:team], :token => options[:token], :webhook => options[:webhook], :payload => options[:payload])
       end
     end
     private :post_to_slack
@@ -135,12 +137,15 @@ module Slackistrano
     #
     #
     #
-    def post_as_slackbot(team: nil, token: nil, webhook: nil, payload: {})
-      uri = URI(URI.encode("https://#{team}.slack.com/services/hooks/slackbot?token=#{token}&channel=#{payload[:channel]}"))
+    def post_as_slackbot(options)
+      default_options = { :team => nil, :token => nil, :webhook => nil, :payload => {} }
+      options = default_options.merge(options)
 
-      text = payload[:attachments].collect { |a| a[:text] }.join("\n")
+      uri = URI(URI.encode("https://#{options[:team]}.slack.com/services/hooks/slackbot?token=#{options[:token]}&channel=#{options[:payload][:channel]}"))
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      text = options[:payload][:attachments].collect { |a| a[:text] }.join("\n")
+
+      Net::HTTP.start(uri.host, uri.port, :use_ssl => true) do |http|
         http.request_post uri, text
       end
     end
@@ -149,16 +154,21 @@ module Slackistrano
     #
     #
     #
-    def post_as_webhook(team: nil, token: nil, webhook: nil, payload: {})
-      params = {'payload' => payload.to_json}
+    def post_as_webhook(options)
+      default_options = { :team => nil, :token => nil, :webhook => nil, :payload => {} }
+      options = default_options.merge(options)
 
-      if webhook.nil?
-        webhook = "https://#{team}.slack.com/services/hooks/incoming-webhook"
-        params.merge!('token' => token)
+      if options[:webhook].nil?
+        options[:webhook] = "https://#{options[:team]}.slack.com/services/hooks/incoming-webhook"
+        params.merge!('token' => options[:token])
       end
 
-      uri = URI(webhook)
-      Net::HTTP.post_form(uri, params)
+      uri = URI(options[:webhook])
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request.body = options[:payload].to_json
+      http.request(request)
     end
     private :post_as_webhook
 
