@@ -13,7 +13,7 @@ Gem::Specification.new do |gem|
   gem.homepage      = "https://github.com/phallstrom/slackistrano"
   gem.license       = 'MIT'
 
-  gem.required_ruby_version = '>= 1.9.3'
+  gem.required_ruby_version = '>= 1.9.2'
 
   gem.files         = `git ls-files`.split($/)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
