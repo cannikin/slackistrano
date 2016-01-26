@@ -160,7 +160,6 @@ module Slackistrano
 
       if options[:webhook].nil?
         options[:webhook] = "https://#{options[:team]}.slack.com/services/hooks/incoming-webhook"
-        params.merge!('token' => options[:token])
       end
 
       uri = URI(options[:webhook])
