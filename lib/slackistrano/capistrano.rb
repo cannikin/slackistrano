@@ -86,19 +86,20 @@ module Slackistrano
                                      :webhook => webhook,
                                      :via_slackbot => via_slackbot,
                                      :payload => payload)
-
+                                     
+            if response.code !~ /^2/
+              warn("[slackistrano] Slack API Failure!")
+              warn("[slackistrano]   URI: #{response.uri}")
+              warn("[slackistrano]   Code: #{response.code}")
+              warn("[slackistrano]   Message: #{response.message}")
+              warn("[slackistrano]   Body: #{response.body}") if response.message != response.body && response.body !~ /<html/
+            end
+            
           rescue => e
             backend.warn("[slackistrano] Error notifying Slack!")
             backend.warn("[slackistrano]   Error: #{e.inspect}")
           end
 
-          if response.code !~ /^2/
-            warn("[slackistrano] Slack API Failure!")
-            warn("[slackistrano]   URI: #{response.uri}")
-            warn("[slackistrano]   Code: #{response.code}")
-            warn("[slackistrano]   Message: #{response.message}")
-            warn("[slackistrano]   Body: #{response.body}") if response.message != response.body && response.body !~ /<html/
-          end
         end
       end
 
